@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1) users table
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?  @unique
+  phone     String?  @unique
+  password  String
+  role      String   @default("customer")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  orders   Order[]
+  employee Employee?
+
+  @@map("users")
+  @@index([email])
+  @@index([phone])
+}
+
+// 2) categories table
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  imageUrl String?   @map("image_url")
+  products Product[]
+
+  @@map("categories")
+}
+
+// 3) products table
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  price       Decimal
+  barcode     String?     @unique
+  sku         String?     @unique
+  categoryId  Int         @map("category_id")
+  imageUrl    String?     @map("image_url")
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  category   Category    @relation(fields: [categoryId], references: [id])
+  inventory  Inventory?
+  orderItems OrderItem[]
+
+  @@map("products")
+  @@index([barcode])
+}
+
+// 4) inventory table
+model Inventory {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @unique @map("product_id")
+  quantity    Int      @default(0)
+  minQuantity Int      @default(5) @map("min_quantity")
+  location    String?
+  lastUpdated DateTime @updatedAt @map("last_updated")
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory")
+}
+
+// 5) orders table
+model Order {
+  id         Int         @id @default(autoincrement())
+  userId     Int         @map("user_id")
+  totalPrice Decimal     @map("total_price")
+  status     String      @default("pending")
+  address    String
+  phone      String
+  notes      String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+// 6) order_items table
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int     @map("order_id")
+  productId Int     @map("product_id")
+  quantity  Int
+  price     Decimal
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// 7) employees table
+model Employee {
+  id       Int      @id @default(autoincrement())
+  userId   Int      @unique @map("user_id")
+  position String
+  salary   Decimal
+  hireDate DateTime @map("hire_date")
+  status   String   @default("active")
+
+  // Relations
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+  payrolls   Payroll[]
+
+  @@map("employees")
+}
+
+// 8) attendance table
+model Attendance {
+  id         Int              @id @default(autoincrement())
+  employeeId Int              @map("employee_id")
+  date       DateTime
+  checkIn    DateTime?        @map("check_in")
+  checkOut   DateTime?        @map("check_out")
+  status     String
+
+  // Relations
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("attendance")
+}
+
+// 9) payroll table
+model Payroll {
+  id         Int     @id @default(autoincrement())
+  employeeId Int     @map("employee_id")
+  month      String
+  baseSalary Decimal @map("base_salary")
+  bonus      Decimal @default(0)
+  deductions Decimal @default(0)
+  netSalary  Decimal @map("net_salary")
+
+  // Relations
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("payroll")
+}
